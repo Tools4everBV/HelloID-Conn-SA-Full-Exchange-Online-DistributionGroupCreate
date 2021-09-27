@@ -1,0 +1,26 @@
+[
+    {
+        "name":  "Alias",
+        "value":  "{{form.naming.alias}}"
+    },
+    {
+        "name":  "DisplayName",
+        "value":  "{{form.naming.displayName}}"
+    },
+    {
+        "name":  "Members",
+        "value":  "{{form.multiselectMembers.toJsonString}}"
+    },
+    {
+        "name":  "Name",
+        "value":  "{{form.naming.name}}"
+    },
+    {
+        "name":  "Owners",
+        "value":  "{{form.multiselectOwners.toJsonString}}"
+    },
+    {
+        "name":  "PrimarySmtpAddress",
+        "value":  "{{form.naming.primarySmtpAddress}}"
+    }
+]

@@ -1,0 +1,138 @@
+[
+    {
+        "key":  "name",
+        "templateOptions":  {
+                                "label":  "Name",
+                                "placeholder":  "IT department",
+                                "required":  true,
+                                "minLength":  2
+                            },
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "templateOptions":  {
+
+                            },
+        "type":  "markdown",
+        "summaryVisibility":  "Show",
+        "body":  "Retrieving this information from Exchange takes an average of +/- 10 seconds.  \nPlease wait while we load the data.",
+        "requiresTemplateOptions":  false,
+        "requiresKey":  false,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "naming",
+        "templateOptions":  {
+                                "label":  "Naming",
+                                "required":  true,
+                                "grid":  {
+                                             "columns":  [
+                                                             {
+                                                                 "headerName":  "Name",
+                                                                 "field":  "name"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Display Name",
+                                                                 "field":  "displayName"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Primary Smtp Address",
+                                                                 "field":  "primarySmtpAddress"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Alias",
+                                                                 "field":  "alias"
+                                                             }
+                                                         ],
+                                             "height":  300,
+                                             "rowSelection":  "single"
+                                         },
+                                "dataSourceConfig":  {
+                                                         "dataSourceGuid":  "$dataSourceGuid_0",
+                                                         "input":  {
+                                                                       "propertyInputs":  [
+                                                                                              {
+                                                                                                  "propertyName":  "name",
+                                                                                                  "otherFieldValue":  {
+                                                                                                                          "otherFieldKey":  "name"
+                                                                                                                      }
+                                                                                              }
+                                                                                          ]
+                                                                   }
+                                                     },
+                                "useDefault":  true,
+                                "defaultSelectorProperty":  "name"
+                            },
+        "type":  "grid",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  true
+    },
+    {
+        "key":  "multiselectOwners",
+        "templateOptions":  {
+                                "label":  "Owners",
+                                "useObjects":  false,
+                                "useFilter":  true,
+                                "options":  [
+                                                "Option 1",
+                                                "Option 2",
+                                                "Option 3"
+                                            ],
+                                "useDataSource":  true,
+                                "valueField":  "name",
+                                "textField":  "name",
+                                "dataSourceConfig":  {
+                                                         "dataSourceGuid":  "$dataSourceGuid_1",
+                                                         "input":  {
+                                                                       "propertyInputs":  [
+
+                                                                                          ]
+                                                                   }
+                                                     },
+                                "required":  true
+                            },
+        "type":  "multiselect",
+        "summaryVisibility":  "Show",
+        "textOrLabel":  "text",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "multiselectMembers",
+        "templateOptions":  {
+                                "label":  "Members",
+                                "useObjects":  false,
+                                "useFilter":  true,
+                                "options":  [
+                                                "Option 1",
+                                                "Option 2",
+                                                "Option 3"
+                                            ],
+                                "useDataSource":  true,
+                                "valueField":  "name",
+                                "textField":  "name",
+                                "dataSourceConfig":  {
+                                                         "dataSourceGuid":  "$dataSourceGuid_2",
+                                                         "input":  {
+                                                                       "propertyInputs":  [
+
+                                                                                          ]
+                                                                   }
+                                                     },
+                                "required":  true
+                            },
+        "type":  "multiselect",
+        "summaryVisibility":  "Show",
+        "textOrLabel":  "text",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    }
+]
