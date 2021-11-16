@@ -70,7 +70,18 @@ if (-not [string]::IsNullOrEmpty($portalBaseUrl)) {
 
 # Define specific endpoint URI
 $script:PortalBaseUrl = $script:PortalBaseUrl.trim("/") + "/"  
- 
+
+# Make sure to reveive an empty array using PowerShell Core
+function ConvertFrom-Json-WithEmptyArray([string]$jsonString) {
+    # Running in PowerShell Core?
+    if($IsCoreCLR -eq $true){
+        $r = [Object[]]($jsonString | ConvertFrom-Json -NoEnumerate)
+        return ,$r  # Force return value to be an array using a comma
+    } else {
+        $r = [Object[]]($jsonString | ConvertFrom-Json)
+        return ,$r  # Force return value to be an array using a comma
+    }
+}
 
 function Invoke-HelloIDGlobalVariable {
     param(
@@ -137,7 +148,7 @@ function Invoke-HelloIDAutomationTask {
                 powerShellScript    = $PowershellScript;
                 automationContainer = $AutomationContainer;
                 objectGuid          = $ObjectGuid;
-                variables           = [Object[]]($Variables | ConvertFrom-Json);
+                variables           = (ConvertFrom-Json-WithEmptyArray($Variables));
             }
             $body = ConvertTo-Json -InputObject $body
     
@@ -188,11 +199,11 @@ function Invoke-HelloIDDatasource {
             $body = @{
                 name               = $DatasourceName;
                 type               = $DatasourceType;
-                model              = [Object[]]($DatasourceModel | ConvertFrom-Json);
+                model              = (ConvertFrom-Json-WithEmptyArray($DatasourceModel));
                 automationTaskGUID = $AutomationTaskGuid;
-                value              = [Object[]]($DatasourceStaticValue | ConvertFrom-Json);
+                value              = (ConvertFrom-Json-WithEmptyArray($DatasourceStaticValue));
                 script             = $DatasourcePsScript;
-                input              = [Object[]]($DatasourceInput | ConvertFrom-Json);
+                input              = (ConvertFrom-Json-WithEmptyArray($DatasourceInput));
             }
             $body = ConvertTo-Json -InputObject $body
       
@@ -234,7 +245,7 @@ function Invoke-HelloIDDynamicForm {
             #Create Dynamic form
             $body = @{
                 Name       = $FormName;
-                FormSchema = [Object[]]($FormSchema | ConvertFrom-Json)
+                FormSchema = (ConvertFrom-Json-WithEmptyArray($FormSchema));
             }
             $body = ConvertTo-Json -InputObject $body -Depth 100
     
@@ -282,7 +293,7 @@ function Invoke-HelloIDDelegatedForm {
                 name            = $DelegatedFormName;
                 dynamicFormGUID = $DynamicFormGuid;
                 isEnabled       = "True";
-                accessGroups    = [Object[]]($AccessGroups | ConvertFrom-Json);
+                accessGroups    = (ConvertFrom-Json-WithEmptyArray($AccessGroups));
                 useFaIcon       = $UseFaIcon;
                 faIcon          = $FaIcon;
             }    
