@@ -6,7 +6,7 @@ try{
 
     # Connect to Exchange Online in an unattended scripting scenario using user credentials (MFA not supported).
     $securePassword = ConvertTo-SecureString $ExchangeOnlineAdminPassword -AsPlainText -Force
-    $credential = New-Object System.Management.Automation.PSCredential ($ExchangeOnlineAdminUsername, $securePassword)
+    $credential = [System.Management.Automation.PSCredential]::new($ExchangeOnlineAdminUsername,$securePassword)
     $exchangeSession = Connect-ExchangeOnline -Credential $credential -ShowBanner:$false -ShowProgress:$false -ErrorAction Stop
 
     Write-Verbose -Verbose "Successfully connected to Office 365"
