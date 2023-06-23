@@ -6,7 +6,7 @@
 $portalUrl = "https://CUSTOMER.helloid.com"
 $apiKey = "API_KEY"
 $apiSecret = "API_SECRET"
-$delegatedFormAccessGroupNames = @("Users") #Only unique names are supported. Groups must exist!
+$delegatedFormAccessGroupNames = @("") #Only unique names are supported. Groups must exist!
 $delegatedFormCategories = @("Exchange Online") #Only unique names are supported. Categories will be created if not exists
 $script:debugLogging = $false #Default value: $false. If $true, the HelloID resource GUIDs will be shown in the logging
 $script:duplicateForm = $false #Default value: $false. If $true, the HelloID resource names will be changed to import a duplicate Form
@@ -16,21 +16,21 @@ $script:duplicateFormSuffix = "_tmp" #the suffix will be added to all HelloID re
 #NOTE: You can also update the HelloID Global variable values afterwards in the HelloID Admin Portal: https://<CUSTOMER>.helloid.com/admin/variablelibrary
 $globalHelloIDVariables = [System.Collections.Generic.List[object]]@();
 
-#Global variable #1 >> ExchangeOnlineAdminPassword
+#Global variable #1 >> ExchangeOnlineAdminUsername
+$tmpName = @'
+ExchangeOnlineAdminUsername
+'@ 
+$tmpValue = @'
+ramon@schoulens.onmicrosoft.com
+'@ 
+$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
+
+#Global variable #2 >> ExchangeOnlineAdminPassword
 $tmpName = @'
 ExchangeOnlineAdminPassword
 '@ 
 $tmpValue = "" 
 $globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "True"});
-
-#Global variable #2 >> ExchangeOnlineAdminUsername
-$tmpName = @'
-ExchangeOnlineAdminUsername
-'@ 
-$tmpValue = @'
-user@domain.com
-'@ 
-$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
 
 #Global variable #3 >> ExchangeOnlineDistributionGroupDomain
 $tmpName = @'
@@ -104,7 +104,7 @@ function Invoke-HelloIDGlobalVariable {
                 secret   = $Secret;
                 ItemType = 0;
             }    
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl + "api/v1/automation/variable")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -150,7 +150,7 @@ function Invoke-HelloIDAutomationTask {
                 objectGuid          = $ObjectGuid;
                 variables           = (ConvertFrom-Json-WithEmptyArray($Variables));
             }
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl +"api/v1/automationtasks/powershell")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -205,7 +205,7 @@ function Invoke-HelloIDDatasource {
                 script             = $DatasourcePsScript;
                 input              = (ConvertFrom-Json-WithEmptyArray($DatasourceInput));
             }
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
       
             $uri = ($script:PortalBaseUrl +"api/v1/datasource")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -270,10 +270,11 @@ function Invoke-HelloIDDelegatedForm {
     param(
         [parameter(Mandatory)][String]$DelegatedFormName,
         [parameter(Mandatory)][String]$DynamicFormGuid,
-        [parameter()][String][AllowEmptyString()]$AccessGroups,
+        [parameter()][Array][AllowEmptyString()]$AccessGroups,
         [parameter()][String][AllowEmptyString()]$Categories,
         [parameter(Mandatory)][String]$UseFaIcon,
         [parameter()][String][AllowEmptyString()]$FaIcon,
+        [parameter()][String][AllowEmptyString()]$task,
         [parameter(Mandatory)][Ref]$returnObject
     )
     $delegatedFormCreated = $false
@@ -293,11 +294,16 @@ function Invoke-HelloIDDelegatedForm {
                 name            = $DelegatedFormName;
                 dynamicFormGUID = $DynamicFormGuid;
                 isEnabled       = "True";
-                accessGroups    = (ConvertFrom-Json-WithEmptyArray($AccessGroups));
                 useFaIcon       = $UseFaIcon;
                 faIcon          = $FaIcon;
-            }    
-            $body = ConvertTo-Json -InputObject $body
+                task            = ConvertFrom-Json -inputObject $task;
+            }
+            if(-not[String]::IsNullOrEmpty($AccessGroups)) { 
+                $body += @{
+                    accessGroups    = (ConvertFrom-Json-WithEmptyArray($AccessGroups));
+                }
+            }
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl +"api/v1/delegatedforms")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -322,6 +328,8 @@ function Invoke-HelloIDDelegatedForm {
     $returnObject.value.guid = $delegatedFormGuid
     $returnObject.value.created = $delegatedFormCreated
 }
+
+
 <# Begin: HelloID Global Variables #>
 foreach ($item in $globalHelloIDVariables) {
 	Invoke-HelloIDGlobalVariable -Name $item.name -Value $item.value -Secret $item.secret 
@@ -552,25 +560,31 @@ Invoke-HelloIDDynamicForm -FormName $dynamicFormName -FormSchema $tmpSchema  -re
 
 <# Begin: Delegated Form Access Groups and Categories #>
 $delegatedFormAccessGroupGuids = @()
-foreach($group in $delegatedFormAccessGroupNames) {
-    try {
-        $uri = ($script:PortalBaseUrl +"api/v1/groups/$group")
-        $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
-        $delegatedFormAccessGroupGuid = $response.groupGuid
-        $delegatedFormAccessGroupGuids += $delegatedFormAccessGroupGuid
-        
-        Write-Information "HelloID (access)group '$group' successfully found$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormAccessGroupGuid })"
-    } catch {
-        Write-Error "HelloID (access)group '$group', message: $_"
+if(-not[String]::IsNullOrEmpty($delegatedFormAccessGroupNames)){
+    foreach($group in $delegatedFormAccessGroupNames) {
+        try {
+            $uri = ($script:PortalBaseUrl +"api/v1/groups/$group")
+            $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
+            $delegatedFormAccessGroupGuid = $response.groupGuid
+            $delegatedFormAccessGroupGuids += $delegatedFormAccessGroupGuid
+            
+            Write-Information "HelloID (access)group '$group' successfully found$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormAccessGroupGuid })"
+        } catch {
+            Write-Error "HelloID (access)group '$group', message: $_"
+        }
+    }
+    if($null -ne $delegatedFormAccessGroupGuids){
+        $delegatedFormAccessGroupGuids = ($delegatedFormAccessGroupGuids | Select-Object -Unique | ConvertTo-Json -Depth 100 -Compress)
     }
 }
-$delegatedFormAccessGroupGuids = ($delegatedFormAccessGroupGuids | Select-Object -Unique | ConvertTo-Json -Compress)
 
 $delegatedFormCategoryGuids = @()
 foreach($category in $delegatedFormCategories) {
     try {
         $uri = ($script:PortalBaseUrl +"api/v1/delegatedformcategories/$category")
         $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
+        $response = $response | Where-Object {$_.name.en -eq $category}
+        
         $tmpGuid = $response.delegatedFormCategoryGuid
         $delegatedFormCategoryGuids += $tmpGuid
         
@@ -580,7 +594,7 @@ foreach($category in $delegatedFormCategories) {
         $body = @{
             name = @{"en" = $category};
         }
-        $body = ConvertTo-Json -InputObject $body
+        $body = ConvertTo-Json -InputObject $body -Depth 100
 
         $uri = ($script:PortalBaseUrl +"api/v1/delegatedformcategories")
         $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -590,7 +604,7 @@ foreach($category in $delegatedFormCategories) {
         Write-Information "HelloID Delegated Form category '$category' successfully created$(if ($script:debugLogging -eq $true) { ": " + $tmpGuid })"
     }
 }
-$delegatedFormCategoryGuids = (ConvertTo-Json -InputObject $delegatedFormCategoryGuids -Compress)
+$delegatedFormCategoryGuids = (ConvertTo-Json -InputObject $delegatedFormCategoryGuids -Depth 100 -Compress)
 <# End: Delegated Form Access Groups and Categories #>
 
 <# Begin: Delegated Form #>
@@ -598,77 +612,10 @@ $delegatedFormRef = [PSCustomObject]@{guid = $null; created = $null}
 $delegatedFormName = @'
 Exchange online - Distribution Group - Create
 '@
-Invoke-HelloIDDelegatedForm -DelegatedFormName $delegatedFormName -DynamicFormGuid $dynamicFormGuid -AccessGroups $delegatedFormAccessGroupGuids -Categories $delegatedFormCategoryGuids -UseFaIcon "True" -FaIcon "fa fa-users" -returnObject ([Ref]$delegatedFormRef) 
-<# End: Delegated Form #>
-
-<# Begin: Delegated Form Task #>
-if($delegatedFormRef.created -eq $true) { 
-	$tmpScript = @'
-$GroupType = "Distribution Group" # "Mail-enabled Security Group" or "Distribution Group"
-
-# Connect to Office 365
-try{
-    HID-Write-Status -Event Information -Message "Connecting to Office 365.."
-
-    $module = Import-Module ExchangeOnlineManagement
-
-    # Connect to Exchange Online in an unattended scripting scenario using user credentials (MFA not supported).
-    $securePassword = ConvertTo-SecureString $ExchangeOnlineAdminPassword -AsPlainText -Force
-    $credential = [System.Management.Automation.PSCredential]::new($ExchangeOnlineAdminUsername,$securePassword)
-    $exchangeSession = Connect-ExchangeOnline -Credential $credential -ShowBanner:$false -ShowProgress:$false -ErrorAction Stop
-
-    HID-Write-Status -Event Success -Message "Successfully connected to Office 365"
-}catch{
-    throw "Could not connect to Exchange Online, error: $_"
-}
-
-# Create Mail-enabled Security Group
-try{   
-    $OwnersToAdd = ($Owners | ConvertFrom-Json).userPrincipalName
-    $MembersToAdd = ($Members | ConvertFrom-Json).userPrincipalName
-
-    $groupParams = @{
-        Name                =   $Name
-        DisplayName         =   $DisplayName
-        PrimarySmtpAddress  =   $PrimarySmtpAddress
-        Alias               =   $Alias
-        ManagedBy           =   $OwnersToAdd
-        Members             =   $MembersToAdd
-        CopyOwnerToMember   =   $true
-    }
-    
-    Switch($GroupType){
-        'Mail-enabled Security Group' {
-            $mailEnabledSecurityGroup = New-DistributionGroup -Type security @groupParams -ErrorAction Stop
-        }
-
-        'Distribution Group' {
-            $mailEnabledSecurityGroup = New-DistributionGroup @groupParams -ErrorAction Stop
-        }
-    }
-     
-    Hid-Write-Status -Event Success -Message "$GroupType [$($groupParams.Name)] created successfully"
-    HID-Write-Summary -Event Success -Message "$GroupType [$($groupParams.Name)] created successfully"
-} catch {
-    HID-Write-Status -Event Error -Message "Error creating $GroupType [$($groupParams.Name)]. Error: $($_.Exception.Message)"
-    HID-Write-Summary -Event Failed -Message "Error creating $GroupType [$($groupParams.Name)]"
-} finally {
-    HID-Write-Status -Event Information -Message "Disconnecting from Office 365.."
-    $exchangeSessionEnd = Disconnect-ExchangeOnline -Confirm:$false -Verbose:$false -ErrorAction Stop
-    HID-Write-Status -Event Success -Message "Successfully disconnected from Office 365"
-}
-'@; 
-
-	$tmpVariables = @'
-[{"name":"Alias","value":"{{form.naming.alias}}","secret":false,"typeConstraint":"string"},{"name":"DisplayName","value":"{{form.naming.displayName}}","secret":false,"typeConstraint":"string"},{"name":"Members","value":"{{form.multiselectMembers.toJsonString}}","secret":false,"typeConstraint":"string"},{"name":"Name","value":"{{form.naming.name}}","secret":false,"typeConstraint":"string"},{"name":"Owners","value":"{{form.multiselectOwners.toJsonString}}","secret":false,"typeConstraint":"string"},{"name":"PrimarySmtpAddress","value":"{{form.naming.primarySmtpAddress}}","secret":false,"typeConstraint":"string"}]
+$tmpTask = @'
+{"name":"Exchange online - Distribution Group - Create","script":"$GroupType = \"Distribution Group\" # \"Mail-enabled Security Group\" or \"Distribution Group\"\r\n\r\n# Connect to Office 365\r\ntry{\r\n    write-information  \"Connecting to Office 365..\"\r\n\r\n    $module = Import-Module ExchangeOnlineManagement\r\n\r\n    # Connect to Exchange Online in an unattended scripting scenario using user credentials (MFA not supported).\r\n    $securePassword = ConvertTo-SecureString $ExchangeOnlineAdminPassword -AsPlainText -Force\r\n    $credential = [System.Management.Automation.PSCredential]::new($ExchangeOnlineAdminUsername,$securePassword)\r\n    $exchangeSession = Connect-ExchangeOnline -Credential $credential -ShowBanner:$false -ShowProgress:$false -ErrorAction Stop\r\n\r\n    write-information  \"Successfully connected to Office 365\"\r\n}catch{\r\n    Write-Error \"Error connecting to Exchange Online. Error: $($_.Exception.Message)\"\r\n   $Log = @{\r\n           Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n           System            = \"Exchange Online\" # optional (free format text) \r\n           Message           = \"Failed to connect to Exchange Online\" # required (free format text) \r\n           IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n           TargetDisplayName = \"Exchange Online\" # optional (free format text) \r\n           \r\n       }\r\n   #send result back  \r\n   Write-Information -Tags \"Audit\" -MessageData $log\r\n}\r\n\r\n\r\n# Create Mail-enabled Security Group\r\ntry{   \r\n    $OwnersToAdd = ($Owners | ConvertFrom-Json).userPrincipalName\r\n    $MembersToAdd = ($Members | ConvertFrom-Json).userPrincipalName\r\n\r\n    $groupParams = @{\r\n        Name                =   $form.naming.name\r\n        DisplayName         =   $form.naming.displayName\r\n        PrimarySmtpAddress  =   $form.naming.primarySmtpAddress\r\n        Alias               =   $form.naming.alias\r\n        ManagedBy           =   $form.multiselectOwners.toJsonString\r\n        Members             =   $form.multiselectMembers.toJsonString\r\n        CopyOwnerToMember   =   $true\r\n    }\r\n    \r\n    Switch($GroupType){\r\n        \u0027Mail-enabled Security Group\u0027 {\r\n            $mailEnabledSecurityGroup = New-DistributionGroup -Type security @groupParams -ErrorAction Stop\r\n        }\r\n\r\n        \u0027Distribution Group\u0027 {\r\n            $mailEnabledSecurityGroup = New-DistributionGroup @groupParams -ErrorAction Stop\r\n        }\r\n    }\r\n    \r\n    $Log = @{\r\n        Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n        System            = \"Exchange Online\" # optional (free format text) \r\n        Message           = \"Created Mailbox  $($mailEnabledSecurityGroup.displayName)\" # required (free format text) \r\n        IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n        TargetDisplayName = $($mailEnabledSecurityGroup.displayName) # optional (free format text) \r\n        TargetIdentifier  = $([string]$mailEnabledSecurityGroup.Guid)  # optional (free format text) \r\n    }\r\n    #send result back  \r\n\r\n    Write-Information -Tags \"Audit\" -MessageData $log\r\n  \r\n} catch {\r\n   \r\n    $Log = @{\r\n        Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n        System            = \"Exchange Online\" # optional (free format text) \r\n        Message           = \"Error creating $GroupType [$($groupParams.Name)]. Error: $($_.Exception.Message)\" # required (free format text) \r\n        IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n        TargetDisplayName = $($groupParams.displayName) # optional (free format text) \r\n        \r\n    }\r\n#send result back  \r\nWrite-Information -Tags \"Audit\" -MessageData $log\r\n  \r\n} finally {\r\n   \r\n    $exchangeSessionEnd = Disconnect-ExchangeOnline -Confirm:$false -Verbose:$false -ErrorAction Stop\r\n    write-information -Event Success -Message \"Successfully disconnected from Office 365\"\r\n}","runInCloud":false}
 '@ 
 
-	$delegatedFormTaskGuid = [PSCustomObject]@{} 
-$delegatedFormTaskName = @'
-Exchange-online-Distribution-Group-Create
-'@
-	Invoke-HelloIDAutomationTask -TaskName $delegatedFormTaskName -UseTemplate "False" -AutomationContainer "8" -Variables $tmpVariables -PowershellScript $tmpScript -ObjectGuid $delegatedFormRef.guid -ForceCreateTask $true -returnObject ([Ref]$delegatedFormTaskGuid) 
-} else {
-	Write-Warning "Delegated form '$delegatedFormName' already exists. Nothing to do with the Delegated Form task..." 
-}
-<# End: Delegated Form Task #>
+Invoke-HelloIDDelegatedForm -DelegatedFormName $delegatedFormName -DynamicFormGuid $dynamicFormGuid -AccessGroups $delegatedFormAccessGroupGuids -Categories $delegatedFormCategoryGuids -UseFaIcon "True" -FaIcon "fa fa-users" -task $tmpTask -returnObject ([Ref]$delegatedFormRef) 
+<# End: Delegated Form #>
+
