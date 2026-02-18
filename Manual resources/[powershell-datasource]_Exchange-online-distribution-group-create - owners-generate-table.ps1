@@ -1,7 +1,5 @@
-$GroupType = "Distribution Group" # "Mail-enabled Security Group" or "Distribution Group"
-
 # PowerShell commands to import
-$commands = @("New-DistributionGroup")
+$commands = @("Get-User")
 
 function Get-MSEntraCertificate {
     [CmdletBinding()]
@@ -64,63 +62,37 @@ catch {
     Write-Error $auditMessage
 }
 
+try {
+    Write-Information -Message "Searching for Exchange Online users.."
+        
+    $exchangeOnlineUsers = Get-User -ResultSize unlimited
 
-# Create Mail-enabled Security Group
-try{   
-    $OwnersToAdd  = ($form.multiselectOwners.UserPrincipalName)
-    $MembersToAdd = ($form.multiselectMembers.UserPrincipalName)
-
-    $groupParams = @{
-        Name                =   $form.naming.name
-        DisplayName         =   $form.naming.displayName
-        PrimarySmtpAddress  =   $form.naming.primarySmtpAddress
-        Alias               =   $form.naming.alias
-        ManagedBy           =   $OwnersToAdd
-        Members             =   $MembersToAdd
-        CopyOwnerToMember   =   $true
-    }
-    
-    Switch($GroupType){
-        'Mail-enabled Security Group' {
-            $mailEnabledSecurityGroup = New-DistributionGroup -Type security @groupParams -ErrorAction Stop
-        }
-
-        'Distribution Group' {
-            $mailEnabledSecurityGroup = New-DistributionGroup @groupParams -ErrorAction Stop
+    $users = $exchangeOnlineUsers
+    $resultCount = @($users).Count
+     
+    Write-Information -Message "Result count: $resultCount"
+    if($resultCount -gt 0){
+        foreach($user in $users){
+            $displayValue = $user.displayName + " [" + $user.UserPrincipalName + "]"
+            $returnObject = @{
+                UserPrincipalName="$($user.UserPrincipalName)";
+                name=$displayValue;
+                id="$($user.id)";
+            }
+     
+            Write-Output $returnObject
         }
     }
-    
-    $Log = @{
-        Action            = "CreateResource" # optional. ENUM (undefined = default) 
-        System            = "Exchange Online" # optional (free format text) 
-        Message           = "Created distribution group:  $($mailEnabledSecurityGroup.displayName)" # required (free format text) 
-        IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) 
-        TargetDisplayName = $($mailEnabledSecurityGroup.displayName) # optional (free format text) 
-        TargetIdentifier  = $([string]$mailEnabledSecurityGroup.Guid)  # optional (free format text) 
-    }
-    #send result back  
-
-    Write-Information -Tags "Audit" -MessageData $log
-  
 } catch {
     $ex = $PSItem
     if (-not [string]::IsNullOrEmpty($ex.Exception.Data.RemoteException.Message)) {
         $warningMessage = "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Data.RemoteException.Message)"
-        $auditMessage = "Error $($actionMessage). Error: $($ex.Exception.Data.RemoteException.Message)"
+        $auditMessage = "Error $($actionMessage). Error: $($ex.Exception.Data.RemoteException.Message)"        
     }
     else {
         $warningMessage = "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
         $auditMessage = "Error $($actionMessage). Error: $($ex.Exception.Message)"
     }
-$Log = @{
-        Action            = "CreateResource" # optional. ENUM (undefined = default) 
-        System            = "Exchange Online" # optional (free format text) 
-        Message           = "Error creating $GroupType [$($groupParams.Name)]. Error: $($_.Exception.Message)" # required (free format text) 
-        IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) 
-        TargetDisplayName = $($groupParams.displayName) # optional (free format text) 
-        
-    }
-    Write-Information -Tags "Audit" -MessageData $log
     Write-Warning $warningMessage
     Write-Error $auditMessage
     # exit # use when using multiple try/catch and the script must stop

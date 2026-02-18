@@ -1,7 +1,7 @@
-$GroupType = "Distribution Group" # "Mail-enabled Security Group" or "Distribution Group"
+$Mailsuffix = $ExchangeOnlineDistributionGroupDomain
 
 # PowerShell commands to import
-$commands = @("New-DistributionGroup")
+$commands = @("Get-DistributionGroup")
 
 function Get-MSEntraCertificate {
     [CmdletBinding()]
@@ -64,68 +64,70 @@ catch {
     Write-Error $auditMessage
 }
 
+try {
+    $iterationMax = 10
+    $iterationStart = 1;
+        
+    for($i = $iterationStart; $i -lt $iterationMax; $i++) {
+        if($i -eq $iterationStart) {
+            $tempName = $datasource.name
+            $DisplayName =  $tempName
+    
+            $Name =   $tempName.Replace(" ","")
 
-# Create Mail-enabled Security Group
-try{   
-    $OwnersToAdd  = ($form.multiselectOwners.UserPrincipalName)
-    $MembersToAdd = ($form.multiselectMembers.UserPrincipalName)
+            $PrimarySmtpAddress =   $tempName.Replace(" ","") + "@" + $Mailsuffix
+            
+            $Alias =   $tempName.Replace(" ","")
 
-    $groupParams = @{
-        Name                =   $form.naming.name
-        DisplayName         =   $form.naming.displayName
-        PrimarySmtpAddress  =   $form.naming.primarySmtpAddress
-        Alias               =   $form.naming.alias
-        ManagedBy           =   $OwnersToAdd
-        Members             =   $MembersToAdd
-        CopyOwnerToMember   =   $true
+            $SamAccountName = $Alias
+         } else {
+            $tempName = $datasource.name
+            $DisplayName =  $tempName + "$i"
+    
+            $Name =   ($tempName + "$i").Replace(" ","")
+
+            $PrimarySmtpAddress =   ($tempName + "$i").Replace(" ","") + "@" + $Mailsuffix 
+            
+            $Alias =   ($tempName + "$i").Replace(" ","")
+
+            $SamAccountName = $Alias
+        }
+        
+        Write-Information -Message "Searching for Distribution Group Name=$Name or DisplayName=$DisplayName or EmailAddresses=$PrimarySmtpAddress or Alias=$Alias"
+
+        $found = Get-DistributionGroup -Filter "Name -eq '$Name' -or DisplayName -eq '$DisplayName' -or EmailAddresses -eq '$PrimarySmtpAddress' -or Alias -eq '$Alias'"
+
+        if(@($found).count -eq 0) {
+            $returnObject = @{
+                name=$Name;
+                displayName=$DisplayName;
+                primarySmtpAddress=$PrimarySmtpAddress;
+                alias=$Alias;
+                samAccountName=$SamAccountName
+            }
+            Write-Information -Message "Distribution Group Name=$Name or DisplayName=$DisplayName or EmailAddresses=$PrimarySmtpAddress or Alias=$Alias not found"
+            break;
+        } else {
+            Write-Warning -Message "Distribution Group Name=$Name or DisplayName=$DisplayName or EmailAddresses=$PrimarySmtpAddress or Alias=$Alias found"
+        }
     }
     
-    Switch($GroupType){
-        'Mail-enabled Security Group' {
-            $mailEnabledSecurityGroup = New-DistributionGroup -Type security @groupParams -ErrorAction Stop
-        }
+    Write-Output $returnObject
 
-        'Distribution Group' {
-            $mailEnabledSecurityGroup = New-DistributionGroup @groupParams -ErrorAction Stop
-        }
-    }
-    
-    $Log = @{
-        Action            = "CreateResource" # optional. ENUM (undefined = default) 
-        System            = "Exchange Online" # optional (free format text) 
-        Message           = "Created distribution group:  $($mailEnabledSecurityGroup.displayName)" # required (free format text) 
-        IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) 
-        TargetDisplayName = $($mailEnabledSecurityGroup.displayName) # optional (free format text) 
-        TargetIdentifier  = $([string]$mailEnabledSecurityGroup.Guid)  # optional (free format text) 
-    }
-    #send result back  
-
-    Write-Information -Tags "Audit" -MessageData $log
-  
 } catch {
     $ex = $PSItem
     if (-not [string]::IsNullOrEmpty($ex.Exception.Data.RemoteException.Message)) {
         $warningMessage = "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Data.RemoteException.Message)"
-        $auditMessage = "Error $($actionMessage). Error: $($ex.Exception.Data.RemoteException.Message)"
+        $auditMessage = "Error $($actionMessage). Error: $($ex.Exception.Data.RemoteException.Message)"        
     }
     else {
         $warningMessage = "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
         $auditMessage = "Error $($actionMessage). Error: $($ex.Exception.Message)"
     }
-$Log = @{
-        Action            = "CreateResource" # optional. ENUM (undefined = default) 
-        System            = "Exchange Online" # optional (free format text) 
-        Message           = "Error creating $GroupType [$($groupParams.Name)]. Error: $($_.Exception.Message)" # required (free format text) 
-        IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) 
-        TargetDisplayName = $($groupParams.displayName) # optional (free format text) 
-        
-    }
-    Write-Information -Tags "Audit" -MessageData $log
     Write-Warning $warningMessage
     Write-Error $auditMessage
     # exit # use when using multiple try/catch and the script must stop
-}
-finally {
+} finally {
     # Docs: https://learn.microsoft.com/en-us/powershell/module/exchange/disconnect-exchangeonline?view=exchange-ps
     $deleteExchangeSessionSplatParams = @{
         Confirm     = $false
