@@ -56,19 +56,10 @@ The following user-defined variables are used by the connector.
 
 ## Remarks
 
-- **Validation data source**:
-  - The form includes a validation field that checks group availability using Exchange Online cmdlets.
-  - It verifies `Name`, `DisplayName`, `PrimarySmtpAddress`, and `Alias` using `Get-DistributionGroup`.
-- **Owners and members**:
-  - Owner and member pickers are populated from Exchange Online via `Get-User` and return `UserPrincipalName` values.
 - **Group creation**:
   - Groups are created with `New-DistributionGroup`; the template supports both Distribution Groups and Mail-enabled Security Groups.
 - **Module and authentication**:
   - Uses the `ExchangeOnlineManagement` module and certificate-based app-only `Connect-ExchangeOnline` with `Organization`, `AppId`, and `Certificate`.
-- **Performance notes**:
-  - Retrieval/validation typically completes in ~10 seconds; actual times may vary.
-- **Duplicate import**:
-  - When importing a duplicate form, resource names can be suffixed automatically, as configured in the script.
 
 ## Development resources
 
@@ -88,8 +79,6 @@ This connector uses Exchange Online PowerShell (EXO) cmdlets via the `ExchangeOn
 
 - Exchange Online PowerShell overview: https://learn.microsoft.com/powershell/exchange/exchange-online-powershell
 - Connect-ExchangeOnline: https://learn.microsoft.com/powershell/module/exchange/connect-exchangeonline
-- Get-DistributionGroup: https://learn.microsoft.com/powershell/module/exchange/get-distributiongroup
-- Get-User: https://learn.microsoft.com/powershell/module/exchange/get-user
 - New-DistributionGroup: https://learn.microsoft.com/powershell/module/exchange/new-distributiongroup
 - Disconnect-ExchangeOnline: https://learn.microsoft.com/powershell/module/exchange/disconnect-exchangeonline
 
