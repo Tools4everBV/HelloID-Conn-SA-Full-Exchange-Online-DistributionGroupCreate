@@ -1,82 +1,96 @@
-<!-- Requirements -->
-## Requirements
-This HelloID Service Automation Delegated Form uses the [Exchange Online PowerShell V2 module](https://docs.microsoft.com/en-us/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps)
+# HelloID-Conn-SA-Full-Exchange-Online-DistributionGroupCreate
 
-<!-- Description -->
+| :information_source: Information |
+| :------------------------------- |
+| This repository contains the connector and configuration code only. The implementer is responsible for acquiring the connection details such as organization name, application ID, certificate, etc. You might need to coordinate with the client's application manager before implementing this connector. |
+
 ## Description
-This HelloID Service Automation Delegated Form provides Exchange Online (Office365) distribution group functionality. The following steps will be performed:
- 1. Give a name for a new distribution group to create
- 2. Select the owner(s)
- 3. Select the member(s)
- 4. Create the distribution group
+HelloID-Conn-SA-Full-Exchange-Online-DistributionGroupCreate is a template designed for use with HelloID Service Automation (SA) Delegated Forms. It can be imported into HelloID and customized according to your requirements.
 
-## Versioning
-| Version | Description | Date |
-| - | - | - |
-| 1.0.1   | Added version number and updated all-in-one script | 2021/11/16  |
-| 1.0.0   | Initial release | 2021/04/29  |
+By using this delegated form, you can create a Distribution Group (or a Mail-enabled Security Group) in Exchange Online using app-only authentication. The form workflow includes:
+ 1. Select the organization/mail domain
+ 2. Enter the group name and alias
+ 3. Validate group availability (name/display name/alias/primary SMTP)
+ 4. Select owners and members from Exchange Online users
+ 5. Submit the form to create the group in Exchange Online
 
-<!-- TABLE OF CONTENTS -->
-## Table of Contents
-- [Requirements](#requirements)
-- [Description](#description)
-- [Table of Contents](#table-of-contents)
-- [All-in-one PowerShell setup script](#all-in-one-powershell-setup-script)
-  - [Getting started](#getting-started)
-- [Post-setup configuration](#post-setup-configuration)
-- [Manual resources](#manual-resources)
-  - [Powershell data source Exchange-online-Distribution-Group-Create-check-names'](#powershell-data-source-exchange-online-distribution-group-create-check-names)
-  - [Powershell data source 'Exchange-online-Distribution-Group-Create-owners-generate-table'](#powershell-data-source-exchange-online-distribution-group-create-owners-generate-table)
-  - [Powershell data source 'Exchange-online-Distribution-Group-Create-members-generate-table'](#powershell-data-source-exchange-online-distribution-group-create-members-generate-table)
-  - [Delegated form task 'Exchange-online-Distribution-Group-Create'](#delegated-form-task-exchange-online-distribution-group-create)
-- [Getting help](#getting-help)
-- [HelloID Docs](#helloid-docs)
+Notes shown in the form:
+- Retrieving and validating data typically takes ~10 seconds
 
+## Getting started
+### Requirements
 
-## All-in-one PowerShell setup script
-The PowerShell script "createform.ps1" contains a complete PowerShell script using the HelloID API to create the complete Form including user defined variables, tasks and data sources.
+#### App Registration & Certificate Setup
 
- _Please note that this script asumes none of the required resources do exists within HelloID. The script does not contain versioning or source control_
+Before implementing this connector, configure a Microsoft Entra ID App Registration for Exchange Online app-only authentication and set up certificate-based auth. During setup, create a new App Registration, upload a certificate, and ensure appropriate Exchange Online RBAC permissions for app-only operations.
 
+Follow the official Microsoft documentation for creating an App Registration and setting up certificate-based authentication:
+- [App-only authentication with certificate (Exchange Online)](https://learn.microsoft.com/en-us/powershell/exchange/app-only-auth-powershell-v2?view=exchange-ps#set-up-app-only-authentication)
 
-### Getting started
-Please follow the documentation steps on [HelloID Docs](https://docs.helloid.com/hc/en-us/articles/360017556559-Service-automation-GitHub-resources) in order to setup and run the All-in one Powershell Script in your own environment.
+#### HelloID-specific configuration
 
- 
-## Post-setup configuration
-After the all-in-one PowerShell script has run and created all the required resources. The following items need to be configured according to your own environment
- 1. Update the following [user defined variables](https://docs.helloid.com/hc/en-us/articles/360014169933-How-to-Create-and-Manage-User-Defined-Variables)
+Once you have completed the Microsoft setup and followed their best practices, configure the following HelloID-specific requirements.
 
-| Variable name                             | Description                                   | Example value     |
-| ----------------------------------------- | --------------------------------------------- | ----------------- |
-| ExchangeOnlineAdminUsername               | Exchange admin account                        | user@domain.com   |
-| ExchangeOnlineAdminPassword               | Exchange admin password                       | ********          |
-| ExchangeOnlineDistributionGroupDomain     | Exchange Distribution group Domain suffix     | domain.com        |
+- **Exchange Online RBAC:**
+  - Assign an appropriate Exchange Online role (e.g., **Exchange Recipient Administrator**) to the App Registration for app-only access.
+- **Certificate:**
+  - Upload the public key file (.cer) in Entra ID.
+  - Provide the certificate as a Base64 string in HelloID. For instructions on creating the certificate and obtaining the base64 string, refer to our forum post: [Setting up a certificate for Microsoft Graph API in HelloID connectors](https://forum.helloid.com/forum/helloid-provisioning/5338-instruction-setting-up-a-certificate-for-microsoft-graph-api-in-helloid-connectors#post5338)
 
+### Connection settings
 
-## Manual resources
-This Delegated Form uses the following resources in order to run
+The following user-defined variables are used by the connector.
 
-### Powershell data source Exchange-online-Distribution-Group-Create-check-names'
-This Powershell data source checks the available names.
+| Setting                         | Description                                       | Mandatory |
+| ------------------------------- | ------------------------------------------------- | --------- |
+| EntraIdOrganization             | Exchange Online organization/tenant (e.g., contoso.onmicrosoft.com) | Yes |
+| EntraIdAppId                    | Entra application (client) ID                     | Yes       |
+| EntraIdCertificateBase64String  | Entra certificate as Base64 string                | Yes       |
+| EntraIdCertificatePassword      | Entra certificate password                         | Yes       |
+| ExchangeOnlineDistributionGroupDomain | Mail domain suffix for group addresses (e.g., contoso.com) | Yes |
 
-### Powershell data source 'Exchange-online-Distribution-Group-Create-owners-generate-table'
-This Powershell data source queries and returns the users in exchange.
+## Remarks
 
-### Powershell data source 'Exchange-online-Distribution-Group-Create-members-generate-table'
-This Powershell data source queries and returns the users in exchange.
+- **Validation data source**:
+  - The form includes a validation field that checks group availability using Exchange Online cmdlets.
+  - It verifies `Name`, `DisplayName`, `PrimarySmtpAddress`, and `Alias` using `Get-DistributionGroup`.
+- **Owners and members**:
+  - Owner and member pickers are populated from Exchange Online via `Get-User` and return `UserPrincipalName` values.
+- **Group creation**:
+  - Groups are created with `New-DistributionGroup`; the template supports both Distribution Groups and Mail-enabled Security Groups.
+- **Module and authentication**:
+  - Uses the `ExchangeOnlineManagement` module and certificate-based app-only `Connect-ExchangeOnline` with `Organization`, `AppId`, and `Certificate`.
+- **Performance notes**:
+  - Retrieval/validation typically completes in ~10 seconds; actual times may vary.
+- **Duplicate import**:
+  - When importing a duplicate form, resource names can be suffixed automatically, as configured in the script.
 
-### Delegated form task 'Exchange-online-Distribution-Group-Create'
-This delegated form task will create the distribution group in Exchange.
+## Development resources
 
+### API endpoints
+
+This connector uses Exchange Online PowerShell (EXO) cmdlets via the `ExchangeOnlineManagement` module:
+
+| Cmdlet/Operation         | Description                                  |
+|--------------------------|----------------------------------------------|
+| Connect-ExchangeOnline   | Establish EXO session using app-only auth    |
+| Get-DistributionGroup    | Check group existence/availability           |
+| Get-User                 | List users for owner/member selection        |
+| New-DistributionGroup    | Create Distribution Group or Mail-enabled Security Group |
+| Disconnect-ExchangeOnline| Close EXO session                            |
+
+### API documentation
+
+- Exchange Online PowerShell overview: https://learn.microsoft.com/powershell/exchange/exchange-online-powershell
+- Connect-ExchangeOnline: https://learn.microsoft.com/powershell/module/exchange/connect-exchangeonline
+- Get-DistributionGroup: https://learn.microsoft.com/powershell/module/exchange/get-distributiongroup
+- Get-User: https://learn.microsoft.com/powershell/module/exchange/get-user
+- New-DistributionGroup: https://learn.microsoft.com/powershell/module/exchange/new-distributiongroup
+- Disconnect-ExchangeOnline: https://learn.microsoft.com/powershell/module/exchange/disconnect-exchangeonline
 
 ## Getting help
-> _For more information on how to configure a HelloID PowerShell connector, please refer to our [documentation](https://docs.helloid.com/hc/en-us/articles/360012518799-How-to-add-a-target-system) pages_
+> :bulb: **Tip:**  
+> For more information on Delegated Forms, please refer to our documentation pages: https://docs.helloid.com/en/service-automation/delegated-forms.html
 
-> _If you need help, feel free to ask questions on our [forum](https://forum.helloid.com)_
-
-## Getting help
-_If you need help, feel free to ask questions on our [forum](https://forum.helloid.com/forum/helloid-connectors/service-automation/379-helloid-sa-exchange-online-create-distribution-group)_
-
-## HelloID Docs
+## HelloID docs
 The official HelloID documentation can be found at: https://docs.helloid.com/
