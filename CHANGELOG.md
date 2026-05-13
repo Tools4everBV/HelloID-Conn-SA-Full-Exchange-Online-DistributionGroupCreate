@@ -2,7 +2,29 @@
 
 All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com), and this project adheres to [Semantic Versioning](https://semver.org).
 
-## [2.0.0] - 13-07-2023
+## [2.1.0] - 13-05-2026
+
+Enhanced form validation with Microsoft Graph API-based uniqueness checks for distribution group properties.
+
+### Added
+
+- New Entra ID-based validation datasources using Microsoft Graph API:
+  - `EntraID-Check-DisplayName-Unique`: Validates display name uniqueness across distribution groups and mail-enabled security groups
+  - `EntraID-Check-EmailAddress-Unique`: Validates email address (mail prefix + domain) uniqueness
+  - `EntraID-Check-Alias-Unique`: Validates alias (mailNickname) uniqueness
+- Each validation datasource includes proper error handling and user-friendly status messages ("Valid" or "Invalid" with details)
+
+### Changed
+
+- Replaced Exchange Online-based group name validation with comprehensive Microsoft Graph API validation checks
+- Updated form datasource wiring to use new validation endpoints
+
+### Removed
+
+- Legacy Exchange Online-based validation datasource (`Distribution-Group-Create-check-names`)
+- Legacy Exchange Online-based member/owner generation datasources (now using Microsoft Graph API for user retrieval)
+
+## [2.0.0] - 13-05-2026
 
 - Switched connector authentication to Microsoft Entra app-only certificate-based authentication for Exchange Online.
 

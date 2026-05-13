@@ -1,4 +1,9 @@
-$GroupType = "Distribution Group" # "Mail-enabled Security Group" or "Distribution Group"
+$groupType = $form.groupType # "Mail-enabled Security Group" or "Distribution Group"
+$ownersToAdd = @($form.ownersToAdd  | ForEach-Object { $_.userPrincipalName })
+$membersToAdd = @($form.membersToAdd | ForEach-Object { $_.userPrincipalName })
+$displayName = $form.displayName
+$primarySmtpAddress = $form.mailPrefix + '@' + $form.mailDomain.id
+$alias = $form.alias
 
 # PowerShell commands to import
 $commands = @("New-DistributionGroup")
@@ -64,45 +69,41 @@ catch {
     Write-Error $auditMessage
 }
 
-
-# Create Mail-enabled Security Group
-try{   
-    $OwnersToAdd  = ($form.multiselectOwners.UserPrincipalName)
-    $MembersToAdd = ($form.multiselectMembers.UserPrincipalName)
-
+try {   
     $groupParams = @{
-        Name                =   $form.naming.name
-        DisplayName         =   $form.naming.displayName
-        PrimarySmtpAddress  =   $form.naming.primarySmtpAddress
-        Alias               =   $form.naming.alias
-        ManagedBy           =   $OwnersToAdd
-        Members             =   $MembersToAdd
-        CopyOwnerToMember   =   $true
+        Name               = $displayName
+        DisplayName        = $displayName
+        PrimarySmtpAddress = $primarySmtpAddress
+        Alias              = $alias
+        ManagedBy          = $ownersToAdd
+        Members            = $membersToAdd
+        CopyOwnerToMember  = $true
     }
-    
-    Switch($GroupType){
+
+    Switch ($groupType) {
         'Mail-enabled Security Group' {
-            $mailEnabledSecurityGroup = New-DistributionGroup -Type security @groupParams -ErrorAction Stop
+            $response = New-DistributionGroup -Type security @groupParams -ErrorAction Stop
         }
 
         'Distribution Group' {
-            $mailEnabledSecurityGroup = New-DistributionGroup @groupParams -ErrorAction Stop
+            $response = New-DistributionGroup @groupParams -ErrorAction Stop
         }
     }
     
     $Log = @{
         Action            = "CreateResource" # optional. ENUM (undefined = default) 
         System            = "Exchange Online" # optional (free format text) 
-        Message           = "Created distribution group:  $($mailEnabledSecurityGroup.displayName)" # required (free format text) 
+        Message           = "Created distribution group:  $($response.displayName)" # required (free format text) 
         IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) 
-        TargetDisplayName = $($mailEnabledSecurityGroup.displayName) # optional (free format text) 
-        TargetIdentifier  = $([string]$mailEnabledSecurityGroup.Guid)  # optional (free format text) 
+        TargetDisplayName = $($response.displayName) # optional (free format text) 
+        TargetIdentifier  = $([string]$response.Guid)  # optional (free format text) 
     }
     #send result back  
 
     Write-Information -Tags "Audit" -MessageData $log
   
-} catch {
+}
+catch {
     $ex = $PSItem
     if (-not [string]::IsNullOrEmpty($ex.Exception.Data.RemoteException.Message)) {
         $warningMessage = "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Data.RemoteException.Message)"
@@ -112,10 +113,10 @@ try{
         $warningMessage = "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
         $auditMessage = "Error $($actionMessage). Error: $($ex.Exception.Message)"
     }
-$Log = @{
+    $Log = @{
         Action            = "CreateResource" # optional. ENUM (undefined = default) 
         System            = "Exchange Online" # optional (free format text) 
-        Message           = "Error creating $GroupType [$($groupParams.Name)]. Error: $($_.Exception.Message)" # required (free format text) 
+        Message           = "Error creating $groupType [$($groupParams.Name)]. Error: $($_.Exception.Message)" # required (free format text) 
         IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) 
         TargetDisplayName = $($groupParams.displayName) # optional (free format text) 
         
