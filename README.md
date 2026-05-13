@@ -1,21 +1,26 @@
 # HelloID-Conn-SA-Full-Exchange-Online-DistributionGroupCreate
 
-| :information_source: Information |
-| :------------------------------- |
+| :information_source: Information                                                                                                                                                                                                                                                                            |
+| :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | This repository contains the connector and configuration code only. The implementer is responsible for acquiring the connection details such as organization name, application ID, certificate, etc. You might need to coordinate with the client's application manager before implementing this connector. |
 
 ## Description
 HelloID-Conn-SA-Full-Exchange-Online-DistributionGroupCreate is a template designed for use with HelloID Service Automation (SA) Delegated Forms. It can be imported into HelloID and customized according to your requirements.
 
 By using this delegated form, you can create a Distribution Group (or a Mail-enabled Security Group) in Exchange Online using app-only authentication. The form workflow includes:
- 1. Select the organization/mail domain
- 2. Enter the group name and alias
- 3. Validate group availability (name/display name/alias/primary SMTP)
- 4. Select owners and members from Exchange Online users
- 5. Submit the form to create the group in Exchange Online
-
-Notes shown in the form:
-- Retrieving and validating data typically takes ~10 seconds
+1. Select Distribution Group or Mail-enabled Security Group
+2. Enter the group name and alias
+   > Name and alias are validated for uniqueness in Entra ID
+3. Select the mail domain for the group's email address
+   > Email address is generated from the group name and selected domain
+4. Optionally provide an alias (mailNickname) for the group
+   > Alias is validated for uniqueness in Entra ID
+5. Select members for the distribution group
+   > Members are selected from a searchable list of Entra ID users
+6. Select owners for the distribution group
+   > Owners are selected from a searchable list of Entra ID users
+7. Create the distribution group or mail-enabled security group
+   > The distribution group or mail-enabled security group is created in Exchange Online with the specified name, alias, owners, and members.
 
 ## Getting started
 ### Requirements
@@ -41,13 +46,13 @@ Once you have completed the Microsoft setup and followed their best practices, c
 
 The following user-defined variables are used by the connector.
 
-| Setting                         | Description                                       | Mandatory |
-| ------------------------------- | ------------------------------------------------- | --------- |
-| EntraIdOrganization             | Exchange Online organization/tenant (e.g., contoso.onmicrosoft.com) | Yes |
-| EntraIdAppId                    | Entra application (client) ID                     | Yes       |
-| EntraIdCertificateBase64String  | Entra certificate as Base64 string                | Yes       |
-| EntraIdCertificatePassword      | Entra certificate password                         | Yes       |
-| ExchangeOnlineDistributionGroupDomain | Mail domain suffix for group addresses (e.g., contoso.com) | Yes |
+| Setting                               | Description                                                         | Mandatory |
+| ------------------------------------- | ------------------------------------------------------------------- | --------- |
+| EntraIdOrganization                   | Exchange Online organization/tenant (e.g., contoso.onmicrosoft.com) | Yes       |
+| EntraIdAppId                          | Entra application (client) ID                                       | Yes       |
+| EntraIdCertificateBase64String        | Entra certificate as Base64 string                                  | Yes       |
+| EntraIdCertificatePassword            | Entra certificate password                                          | Yes       |
+| ExchangeOnlineDistributionGroupDomain | Mail domain suffix for group addresses (e.g., contoso.com)          | Yes       |
 
 ## Remarks
 
@@ -71,13 +76,13 @@ The following user-defined variables are used by the connector.
 
 This connector uses Exchange Online PowerShell (EXO) cmdlets via the `ExchangeOnlineManagement` module:
 
-| Cmdlet/Operation         | Description                                  |
-|--------------------------|----------------------------------------------|
-| Connect-ExchangeOnline   | Establish EXO session using app-only auth    |
-| Get-DistributionGroup    | Check group existence/availability           |
-| Get-User                 | List users for owner/member selection        |
-| New-DistributionGroup    | Create Distribution Group or Mail-enabled Security Group |
-| Disconnect-ExchangeOnline| Close EXO session                            |
+| Cmdlet/Operation          | Description                                              |
+| ------------------------- | -------------------------------------------------------- |
+| Connect-ExchangeOnline    | Establish EXO session using app-only auth                |
+| Get-DistributionGroup     | Check group existence/availability                       |
+| Get-User                  | List users for owner/member selection                    |
+| New-DistributionGroup     | Create Distribution Group or Mail-enabled Security Group |
+| Disconnect-ExchangeOnline | Close EXO session                                        |
 
 ### API documentation
 
