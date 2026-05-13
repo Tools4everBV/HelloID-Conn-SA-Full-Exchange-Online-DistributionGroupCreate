@@ -3,7 +3,7 @@
         "description":  null,
         "translateDescription":  false,
         "inputFieldType":  1,
-        "key":  "alias",
+        "key":  "mailPrefix",
         "type":  0,
         "options":  1
     },
